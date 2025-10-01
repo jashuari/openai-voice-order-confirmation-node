@@ -1,7 +1,7 @@
 # Voice Order Confirmer for E-Commerce (Shopaz/Gjirafa style)
 
-A small **Node.js / Fastify** service that uses **Twilio Media Streams** + **OpenAI Realtime API** to confirm e-commerce orders over the phone in Albanian.  
-The bot calls the customer, greets them with a company name and order ID, listens for their response, and politely hangs up.
+## A small **Node.js / Fastify** service that uses **Twilio Media Streams** + **OpenAI Realtime API** to confirm e-commerce orders over the phone in Albanian.  
+## The bot calls the customer, greets them with a company name and order ID, listens for their response, and politely hangs up.
 ---
 
 ## Features
