@@ -1,89 +1,141 @@
-#  Speech Assistant with Twilio Voice and the OpenAI Realtime API (Node.js)
+Voice Order Confirmer for E-Commerce (Shopaz/Gjirafa style)
 
-This application demonstrates how to use Node.js, [Twilio Voice](https://www.twilio.com/docs/voice) and [Media Streams](https://www.twilio.com/docs/voice/media-streams), and [OpenAI's Realtime API](https://platform.openai.com/docs/) to make a phone call to speak with an AI Assistant. 
+A small Node.js/Fastify service that uses Twilio Media Streams + OpenAI Realtime API to confirm e-commerce orders over the phone in Albanian.
+The bot calls the customer, greets them with a company name and order ID, listens for their response, and politely hangs up.
 
-The application opens websockets with the OpenAI Realtime API and Twilio, and sends voice audio from one to the other to enable a two-way conversation.
+Why
 
-See [here](https://www.twilio.com/en-us/blog/voice-ai-assistant-openai-realtime-api-node) for a tutorial overview of the code.
+Manual phone confirmations are slow and costly. This demo shows how you can automate it with voice AI, while still keeping it natural and local-language friendly.
 
-This application uses the following Twilio products in conjuction with OpenAI's Realtime API:
-- Voice (and TwiML, Media Streams)
-- Phone Numbers
+Features
 
-> [!NOTE]
-> Outbound calling is beyond the scope of this app. However, we demoed [one way to do it here](https://www.twilio.com/en-us/blog/outbound-calls-node-openai-realtime-api-voice).
+📞 Inbound Twilio call → OpenAI Realtime stream
 
-## Prerequisites
+🎙️ Real-time Albanian TTS + ASR loop
 
-To use the app, you will  need:
+🏷️ Dynamic order/company ID in the greeting
 
-- **Node.js 18+** We used \`18.20.4\` for development; download from [here](https://nodejs.org/).
-- **A Twilio account.** You can sign up for a free trial [here](https://www.twilio.com/try-twilio).
-- **A Twilio number with _Voice_ capabilities.** [Here are instructions](https://help.twilio.com/articles/223135247-How-to-Search-for-and-Buy-a-Twilio-Phone-Number-from-Console) to purchase a phone number.
-- **An OpenAI account and an OpenAI API Key.** You can sign up [here](https://platform.openai.com/).
-  - **OpenAI Realtime API access.**
+✅ Detects user’s voice → thanks them → hangs up cleanly
 
-## Local Setup
+⚡ Built with Fastify + WS, no heavy frameworks
 
-There are 4 required steps to get the app up-and-running locally for development and testing:
-1. Run ngrok or another tunneling solution to expose your local server to the internet for testing. Download ngrok [here](https://ngrok.com/).
-2. Install the packages
-3. Twilio setup
-4. Update the .env file
+Requirements
 
-### Open an ngrok tunnel
-When developing & testing locally, you'll need to open a tunnel to forward requests to your local development server. These instructions use ngrok.
+Node.js 20+
 
-Open a Terminal and run:
-```
+A Twilio account with:
+
+A Twilio phone number (capable of Voice)
+
+Programmable Voice → Media Streams enabled
+
+An OpenAI API key (Realtime access)
+
+ngrok (or any public HTTPS tunnel) for local testing
+
+Setup
+1. Clone and install
+git clone https://github.com/yourname/voice-order-confirmer.git
+cd voice-order-confirmer
+pnpm install   # or npm / yarn
+
+2. Environment variables
+
+Copy .env.example → .env and fill it in:
+
+OPENAI_API_KEY=sk-xxxx
+TWILIO_ACCOUNT_SID=ACxxxx
+TWILIO_AUTH_TOKEN=xxxx
+PORT=5050
+
+3. Twilio configuration
+
+Buy/assign a Twilio number.
+
+In Twilio Console → Voice → Manage Numbers → your number:
+
+Voice webhook URL →
+
+https://<your-host-or-ngrok>/incoming-call
+
+
+Method: HTTP POST
+
+Enable Media Streams → point to:
+
+wss://<your-host-or-ngrok>/media-stream
+
+
+Save and test with a call to your Twilio number.
+
+4. Run locally
+pnpm start
+
+
+Expose port for Twilio:
+
 ngrok http 5050
-```
-Once the tunnel has been opened, copy the `Forwarding` URL. It will look something like: `https://[your-ngrok-subdomain].ngrok.app`. You will
-need this when configuring your Twilio number setup.
 
-Note that the `ngrok` command above forwards to a development server running on port `5050`, which is the default port configured in this application. If
-you override the `PORT` defined in `index.js`, you will need to update the `ngrok` command accordingly.
+Local Testing without Twilio (mic-client)
 
-Keep in mind that each time you run the `ngrok http` command, a new URL will be created, and you'll need to update it everywhere it is referenced below.
+You can test locally without a Twilio number using mic-client.cjs.
+It simulates Twilio Media Streams by sending your mic audio as μ-law frames and playing bot responses back to your speakers.
 
-### Install required packages
+What it does
 
-Open a Terminal and run:
-```
-npm install
-```
+🎤 Captures mic at 8 kHz PCM16 mono
 
-### Twilio setup
+🔄 Converts to μ-law, splits into 20ms frames, sends as media events
 
-#### Point a Phone Number to your ngrok URL
-In the [Twilio Console](https://console.twilio.com/), go to **Phone Numbers** > **Manage** > **Active Numbers** and click on the additional phone number you purchased for this app in the **Prerequisites**.
+🔊 Plays bot responses on your speakers (8 kHz)
 
-In your Phone Number configuration settings, update the first **A call comes in** dropdown to **Webhook**, and paste your ngrok forwarding URL (referenced above), followed by `/incoming-call`. For example, `https://[your-ngrok-subdomain].ngrok.app/incoming-call`. Then, click **Save configuration**.
+📢 Sends Twilio-like start + stop events
 
-### Update the .env file
+✅ Includes a strict 20ms pacing fix → if your mic drifts from 8kHz, it pads with silence frames instead of glitching
 
-Create a `/env` file, or copy the `.env.example` file to `.env`:
+Run it
+WS_URL=ws://localhost:5050/media-stream \
+MIC_DEVICE=default \
+PLAYBACK_GAIN=1.6 \
+node mic-client.cjs
 
-```
-cp .env.example .env
-```
 
-In the .env file, update the `OPENAI_API_KEY` to your OpenAI API key from the **Prerequisites**.
+WS_URL → your server WebSocket (/media-stream)
 
-## Run the app
-Once ngrok is running, dependencies are installed, Twilio is configured properly, and the `.env` is set up, run the dev server with the following command:
-```
-node index.js
-```
-## Test the app
-With the development server running, call the phone number you purchased in the **Prerequisites**. After the introduction, you should be able to talk to the AI Assistant. Have fun!
+MIC_DEVICE → optional mic device (default, hw:0,0, etc.)
 
-## Special features
+PLAYBACK_GAIN → loudness multiplier (1.0–3.0)
 
-### Have the AI speak first
-To have the AI voice assistant talk before the user, uncomment the line `// sendInitialConversationItem();`. The initial greeting is controlled in `sendInitialConversationItem`.
+Troubleshooting
 
-### Interrupt handling/AI preemption
-When the user speaks and OpenAI sends `input_audio_buffer.speech_started`, the code will clear the Twilio Media Streams buffer and send OpenAI `conversation.item.truncate`.
+Chipmunk / fast audio → your mic isn’t true 8kHz, use SoX or set OS input to 8kHz
 
-Depending on your application's needs, you may want to use the [`input_audio_buffer.speech_stopped`](https://platform.openai.com/docs/api-reference/realtime-server-events/input_audio_buffer/speech_stopped) event, instead.
+Speaker underruns → lower PLAYBACK_GAIN
+
+No mic input → check devices
+
+Linux: arecord -l → MIC_DEVICE="hw:0,0"
+
+macOS: MIC_DEVICE=default
+
+How it works
+
+Twilio (or mic-client) sends audio frames to /media-stream.
+
+Server bridges to OpenAI Realtime API.
+
+Bot generates Albanian voice reply.
+
+Frames are sent back to caller (or mic-client speaker).
+
+Once user confirms, bot thanks them and hangs up.
+
+Roadmap
+
+ Add DTMF support (1 to confirm, 2 to cancel)
+
+ CRM integration for auto-updating order status
+
+ Retry logic + voicemail detection
+
+ Multi-language support
